@@ -33,6 +33,10 @@ static ngx_int_t ngx_http_cross_origin_init(ngx_conf_t *cf);
 
 static char *ngx_http_cors_origin_list(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_cors_method_list(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+static char *ngx_http_cors_header_list(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 
 static ngx_command_t  ngx_http_cross_origin_commands[] = {
@@ -44,8 +48,22 @@ static ngx_command_t  ngx_http_cross_origin_commands[] = {
       0,
       NULL},
 
-    { ngx_string("cors_support_credential"),
+    { ngx_string("cors_method_list"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      ngx_http_cors_method_list,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL},
+
+    { ngx_string("cors_header_list"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      ngx_http_cors_header_list,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL},
+
+    { ngx_string("cors_support_credential"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_cross_origin_loc_conf_t, support_credential),
@@ -56,14 +74,14 @@ static ngx_command_t  ngx_http_cross_origin_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_cross_origin_module_ctx = {
-    NULL,                                  /* preconfiguration */
-    ngx_http_cross_origin_init,            /* postconfiguration */
+    NULL,                                       /* preconfiguration */
+    ngx_http_cross_origin_init,                 /* postconfiguration */
 
-    NULL,                                  /* create main configuration */
-    NULL,                                  /* init main configuration */
+    NULL,                                       /* create main configuration */
+    NULL,                                       /* init main configuration */
 
-    NULL,                                  /* create server configuration */
-    NULL,                                  /* merge server configuration */
+    NULL,                                       /* create server configuration */
+    NULL,                                       /* merge server configuration */
 
     ngx_http_cross_origin_create_conf,          /* create location configuration */
     ngx_http_cross_origin_merge_conf            /* merge location configuration */
@@ -184,7 +202,7 @@ ngx_http_cors_origin_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     if (crolcf->origin_list == NULL) {
-        crolcf->origin_list = ngx_array_create(cf->pool, 1,
+        crolcf->origin_list = ngx_array_create(cf->pool, 4,
                                         sizeof(ngx_http_cross_origin_val_t));
         if (crolcf->origin_list == NULL) {
             return NGX_CONF_ERROR;
@@ -195,10 +213,88 @@ ngx_http_cors_origin_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strcmp(value[i].data, "unbounded") == 0) {
             crolcf->origin_unbounded = 1;
-            continue;
+            break;
         }
 
         cov = ngx_array_push(crolcf->origin_list);
+        if (cov == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        cov->hash = ngx_hash_key(value[i].data, value[i].len);
+        cov->value = value[i];
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_cors_method_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_cross_origin_loc_conf_t  *crolcf = conf;
+
+    ngx_str_t                         *value;
+    ngx_uint_t                         i;
+    ngx_http_cross_origin_val_t       *cov;
+
+    value = cf->args->elts;
+
+    if (crolcf->method_list == NULL) {
+        crolcf->method_list = ngx_array_create(cf->pool, 4,
+                                        sizeof(ngx_http_cross_origin_val_t));
+        if (crolcf->method_list == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        if (ngx_strcmp(value[i].data, "unbounded") == 0) {
+            crolcf->method_unbounded = 1;
+            break;
+        }
+
+        cov = ngx_array_push(crolcf->method_list);
+        if (cov == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        cov->hash = ngx_hash_key(value[i].data, value[i].len);
+        cov->value = value[i];
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_cors_header_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_cross_origin_loc_conf_t  *crolcf = conf;
+
+    ngx_str_t                         *value;
+    ngx_uint_t                         i;
+    ngx_http_cross_origin_val_t       *cov;
+
+    value = cf->args->elts;
+
+    if (crolcf->header_list == NULL) {
+        crolcf->header_list = ngx_array_create(cf->pool, 4,
+                                        sizeof(ngx_http_cross_origin_val_t));
+        if (crolcf->header_list == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        if (ngx_strcmp(value[i].data, "unbounded") == 0) {
+            crolcf->header_unbounded = 1;
+            break;
+        }
+
+        cov = ngx_array_push(crolcf->header_list);
         if (cov == NULL) {
             return NGX_CONF_ERROR;
         }
