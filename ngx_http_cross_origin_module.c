@@ -107,13 +107,17 @@ ngx_module_t  ngx_http_cross_origin_module = {
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 
 
+/* For Preflight Request */
 static ngx_int_t
 ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
 {
+    /* ngx_http_send_response() */
+
     return NGX_DECLINED;
 }
 
 
+/* For Simple Cross-Origin Request, Actual Request, and Redirects */
 static ngx_int_t
 ngx_http_cross_origin_filter(ngx_http_request_t *r)
 {
