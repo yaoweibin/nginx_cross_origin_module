@@ -162,6 +162,17 @@ ngx_http_cross_origin_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->origin_list = prev->origin_list;
     }
 
+    if (conf->method_list == NULL) {
+        conf->method_list = prev->method_list;
+    }
+
+    if (conf->header_list == NULL) {
+        conf->header_list = prev->header_list;
+    }
+
+    ngx_conf_merge_value(conf->origin_unbounded, prev->origin_unbounded, 0);
+    ngx_conf_merge_value(conf->method_unbounded, prev->method_unbounded, 0);
+    ngx_conf_merge_value(conf->header_unbounded, prev->header_unbounded, 0);
     ngx_conf_merge_value(conf->support_credential, prev->support_credential, 0);
 
     return NGX_CONF_OK;
