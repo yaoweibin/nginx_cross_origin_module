@@ -35,6 +35,7 @@ typedef struct {
     ngx_flag_t    support_credential;
     time_t        max_age;
 
+    ngx_str_t                  preflight_response_type;
     ngx_http_complex_value_t   preflight_response;
 } ngx_http_cross_origin_loc_conf_t;
 
@@ -131,6 +132,13 @@ static ngx_command_t  ngx_http_cross_origin_commands[] = {
       0,
       NULL},
 
+    { ngx_string("cors_preflight_response_type"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_cross_origin_loc_conf_t, preflight_response_type),
+      NULL},
+
       ngx_null_command
 };
 
@@ -179,9 +187,9 @@ static ngx_str_t response_method_header = ngx_string("Access-Control-Allow-Metho
 /*static ngx_str_t response_headers_header = ngx_string("Access-Control-Allow-Headers");*/
 static ngx_str_t response_expose_headers_header = ngx_string("Access-Control-Expose-Headers");
 
-static ngx_str_t response_content_type = ngx_string("text/plain");
-
 static ngx_str_t response_credential_true = ngx_string("true");
+
+#define DEFAULT_RESPONSE_CONTENT_TYPE "text/plain"
 
 /* case-sensitive */
 static ngx_str_t simple_methods[] = {
@@ -409,7 +417,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
             "http cross origin prefight ok, send the response.");
 
     /* At last, send this preflight response */
-    return ngx_http_send_response(r, 200, &response_content_type, 
+    return ngx_http_send_response(r, 200, &colcf->preflight_response_type, 
             &colcf->preflight_response);
 
 leave:
@@ -777,6 +785,7 @@ ngx_http_cross_origin_create_conf(ngx_conf_t *cf)
      *     conf->method_list  = NULL;
      *     conf->header_list  = NULL;
      *     conf->expose_header_list  = NULL;
+     *     conf->preflight_response_type  = {0, NULL};
      *     conf->preflight_response  = ALL NULL;
      *
      */
@@ -824,6 +833,8 @@ ngx_http_cross_origin_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->header_unbounded, prev->header_unbounded, 0);
     ngx_conf_merge_value(conf->support_credential, prev->support_credential, 0);
     ngx_conf_merge_sec_value(conf->max_age, prev->max_age, 0);
+    ngx_conf_merge_str_value(conf->preflight_response_type, 
+            prev->preflight_response_type, DEFAULT_RESPONSE_CONTENT_TYPE);
 
     return NGX_CONF_OK;
 }
