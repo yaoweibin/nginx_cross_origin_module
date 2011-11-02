@@ -31,7 +31,7 @@ __DATA__
 
 === TEST 1: the first time request
 --- http_config
-cors on;
+cors off;
 cors_max_age     3600;
 cors_origin_list unbounded;
 cors_method_list unbounded;
@@ -46,8 +46,9 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Host: www.ruby-lang.org
+Origin: example.org
+Access-Control-Request-Method: PUT
 --- request
-GET /
---- response_headers_like
-Foo Bar!
+OPTIONS /
+--- response_headers
+Access-Control-Allow-Origin: example.org
