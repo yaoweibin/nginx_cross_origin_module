@@ -1,1 +1,15 @@
 add the process for cross origin request: http://www.w3.org/TR/cors/
+
+Test example:
+
+cors on;
+cors_max_age     3600;
+#cors_origin_list unbounded;
+cors_origin_list foo.org bar.org example.org;
+#cors_method_list unbounded;
+cors_method_list GET POST;
+cors_header_list unbounded;
+cors_expose_header_list AAAA Expires BBB CCC;
+cors_support_credential on;
+cors_preflight_response "Foo Bar!";
+
