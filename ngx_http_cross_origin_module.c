@@ -262,7 +262,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     ngx_str_t                        *method_name;
     ngx_str_t                        *str_tmp;
     ngx_uint_t                        method, match, not_simple, i;
-    /* point array of ngx_table_elt_t */
+    /* array of ngx_table_elt_t */
     ngx_array_t                      *headers, *allow_headers;   
     ngx_table_elt_t                  *h;
     ngx_http_cross_origin_loc_conf_t *colcf;
@@ -445,17 +445,6 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
         }
     }
 
-    if (!ngx_http_cross_origin_search_string(simple_headers, method_name, 0)) {
-        /* XXX: Multi-filed-name in one or more headers? */
-        str_tmp = ngx_http_cross_origin_concatenate_list_value(r, 
-                colcf->method_list);
-
-        if (str_tmp && ngx_http_cross_origin_add_header(r, 
-                    &response_method_header, str_tmp) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-    }
-
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
             "http cross origin prefight ok, send the response.");
 
@@ -634,7 +623,7 @@ ngx_http_cross_origin_search_multi_header(ngx_http_request_t *r, ngx_str_t *name
 
             if (arr == NULL) {
 
-                arr = ngx_array_create(r->pool, 1, sizeof(ngx_table_elt_t *));
+                arr = ngx_array_create(r->pool, 1, sizeof(ngx_table_elt_t));
                 if (arr == NULL) {
                     return NULL;
                 }
@@ -645,7 +634,8 @@ ngx_http_cross_origin_search_multi_header(ngx_http_request_t *r, ngx_str_t *name
                 return NULL;
             }
 
-            te = &h[i];
+            *te = h[i];
+
         }
     }
 
