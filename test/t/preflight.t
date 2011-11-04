@@ -31,7 +31,7 @@ __DATA__
 
 === TEST 1: the first time request
 --- http_config
-cors off;
+cors on;
 cors_max_age     3600;
 cors_origin_list unbounded;
 cors_method_list unbounded;

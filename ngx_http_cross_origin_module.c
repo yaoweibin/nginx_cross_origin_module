@@ -10,6 +10,7 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#define SP ' '
 
 typedef struct {
     u_char    *name;
@@ -54,6 +55,8 @@ static ngx_int_t ngx_http_cross_origin_search_string(ngx_str_t *string_array,
         ngx_str_t *name, ngx_flag_t case_insensitive);
 static ngx_str_t *ngx_http_cross_origin_concatenate_list_value(
         ngx_http_request_t *r, ngx_array_t *arr);
+static ngx_array_t *ngx_http_cross_origin_split_string(ngx_http_request_t *r, 
+        ngx_str_t *str, u_char separator);
 
 static ngx_int_t ngx_http_cross_origin_filter(ngx_http_request_t *r);
 
@@ -184,7 +187,7 @@ static ngx_str_t response_origin_header = ngx_string("Access-Control-Allow-Origi
 static ngx_str_t response_credential_header = ngx_string("Access-Control-Allow-Credentials");
 static ngx_str_t response_max_age_header = ngx_string("Access-Control-Max-Age");
 static ngx_str_t response_method_header = ngx_string("Access-Control-Allow-Methods");
-/*static ngx_str_t response_headers_header = ngx_string("Access-Control-Allow-Headers");*/
+static ngx_str_t response_headers_header = ngx_string("Access-Control-Allow-Headers");
 static ngx_str_t response_expose_headers_header = ngx_string("Access-Control-Expose-Headers");
 
 static ngx_str_t response_credential_true = ngx_string("true");
@@ -199,7 +202,6 @@ static ngx_str_t simple_methods[] = {
     { 0, NULL }
 };
 
-#if 0
 /* case-insensitive */
 static ngx_str_t simple_headers[] = {
     ngx_string("Accept"),
@@ -209,6 +211,7 @@ static ngx_str_t simple_headers[] = {
     { 0, NULL }
 };
 
+#if 0
 /* case-insensitive */
 static ngx_str_t simple_types[] = {
     ngx_string("application/x-www-form-urlencoded"),
@@ -258,8 +261,9 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     ngx_str_t                        *origin_name, str_max_age;
     ngx_str_t                        *method_name;
     ngx_str_t                        *str_tmp;
-    ngx_uint_t                        method, match, i;
-    ngx_array_t                      *headers, *allow_headers;
+    ngx_uint_t                        method, match, not_simple, i;
+    /* point array of ngx_table_elt_t */
+    ngx_array_t                      *headers, *allow_headers;   
     ngx_table_elt_t                  *h;
     ngx_http_cross_origin_loc_conf_t *colcf;
     
@@ -411,7 +415,46 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     }
 
     /* Step 10 */
-    /*TODO: Add the Allow headers*/
+    not_simple = 0;
+    if (headers) {
+        h = headers->elts;
+        for (i = 0; i < headers->nelts; i++) {
+            if (!ngx_http_cross_origin_search_string(simple_headers, &h[i].value, 1)) {
+                not_simple = 1;
+                break;
+            }
+        }
+    }
+
+    if (not_simple) {
+        str_tmp = ngx_http_cross_origin_concatenate_list_value(r, 
+                colcf->header_list);
+
+        if (str_tmp && ngx_http_cross_origin_add_header(r, 
+                    &response_headers_header, str_tmp) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+    }
+    else if (colcf->header_unbounded && headers) {
+        h = headers->elts;
+        for (i = 0; i < headers->nelts; i++) {
+            if (ngx_http_cross_origin_add_header(r, 
+                        &response_headers_header, &h[i].value) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    if (!ngx_http_cross_origin_search_string(simple_headers, method_name, 0)) {
+        /* XXX: Multi-filed-name in one or more headers? */
+        str_tmp = ngx_http_cross_origin_concatenate_list_value(r, 
+                colcf->method_list);
+
+        if (str_tmp && ngx_http_cross_origin_add_header(r, 
+                    &response_method_header, str_tmp) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+    }
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
             "http cross origin prefight ok, send the response.");
@@ -430,7 +473,9 @@ leave:
 static ngx_int_t
 ngx_http_cross_origin_filter(ngx_http_request_t *r)
 {
-    ngx_str_t                         *origin_name, *str_tmp;
+    ngx_str_t                         *n, *origin_name, *str_tmp;
+    ngx_uint_t                         match, i;
+    ngx_array_t                       *names;
     ngx_table_elt_t                   *h;
     ngx_http_cross_origin_loc_conf_t  *colcf;
 
@@ -457,8 +502,28 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
     
     /* Step 2 */
     if (!colcf->origin_unbounded) {
-        /* TODO: Split the origin_name */
-        if (!ngx_http_cross_origin_search_list(colcf->origin_list, origin_name, 0)) {
+        match = 0;
+        if (ngx_strlchr(origin_name->data, origin_name->data + origin_name->len, SP)) {
+            /* Multiple origin names */
+            names = ngx_http_cross_origin_split_string(r, origin_name, SP);
+            if (names) {
+                n = names->elts;
+                for (i = 0; i < names->nelts; i++) {
+                    if (ngx_http_cross_origin_search_list(colcf->origin_list, 
+                                &n[i], 0)) {
+                        match = 1;
+                    }
+                }
+            }
+        }
+        else {
+            /* Single origin name */
+            if (ngx_http_cross_origin_search_list(colcf->origin_list, origin_name, 0)) {
+                match = 1;
+            }
+        }
+
+        if (match == 0) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                     "http cross origin header not include in the list of origin");
             goto next_filter;
@@ -765,6 +830,49 @@ ngx_http_cross_origin_concatenate_list_value(ngx_http_request_t *r,
     s->len = last - s->data;
 
     return s;
+}
+
+
+static ngx_array_t *
+ngx_http_cross_origin_split_string(ngx_http_request_t *r, ngx_str_t *str, 
+        u_char separator)
+{
+    u_char                      *pre, *p, *last;
+    ngx_str_t                   *ts;
+    ngx_array_t                 *arr;
+
+    arr = NULL;
+    last = str->data + str->len;
+    pre = p = str->data;
+
+    while(p < last) {
+
+        p = ngx_strlchr(p, last, separator);
+        if (p == NULL) {
+            break;
+        }
+
+        if (arr == NULL) {
+            arr = ngx_array_create(r->pool, 4, sizeof(ngx_str_t));
+            if (arr == NULL) {
+                return NULL;
+            }
+        }
+
+        ts = ngx_array_push(arr);
+        if (ts == NULL) {
+            return NULL;
+        }
+
+        ts->data = pre;
+        ts->len = p - pre;
+
+        p++;
+
+        pre = p;
+    }
+
+    return arr;
 }
 
 
