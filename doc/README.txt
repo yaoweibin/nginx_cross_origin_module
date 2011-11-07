@@ -19,6 +19,7 @@ Synopsis
         cors_origin_list unbounded;
         cors_method_list unbounded;
         cors_header_list unbounded;
+        cors_safe_methods GET OPTIONS;
 
         server {
             listen       80;
@@ -80,6 +81,17 @@ Directives
 
     You can specify a list of headers consisting of zero or more field names
     that are supported by the resource.
+
+  cors_safe_methods
+    syntax: *cors_safe_methods methods;*
+
+    default: *cors_safe_methods GET OPTIONS*
+
+    context: *http, server, location*
+
+    With the Security consideration in section 5.3 of this protocol, only
+    GET and OPTIONS actual request are allowed by default. You can add new
+    methods with this directive.
 
   cors_expose_header_list
     syntax: *cors_expose_header_list header_list;*

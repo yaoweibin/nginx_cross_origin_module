@@ -303,6 +303,23 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     }
     origin_name = &h->value;
 
+    /* An OPTIONS request with Origin header is treadted
+     * to be preflight request */
+    ctx = ngx_http_get_module_ctx(r, ngx_http_cross_origin_module);
+    if (ctx == NULL) {
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_cross_origin_ctx_t));
+        if (ctx == NULL){
+            return NGX_ERROR;
+        }
+
+        ngx_http_set_ctx(r, ctx, ngx_http_cross_origin_module);
+    }
+
+    if (ctx->preflight) {
+        goto leave;
+    }
+    ctx->preflight = 1;
+
     /* Step 2 */
     if (!colcf->origin_unbounded) {
         if (!ngx_http_cross_origin_search_list(colcf->origin_list, origin_name, 0)) {
@@ -461,18 +478,6 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
             "http cross origin prefight ok, send the response.");
-
-    ctx = ngx_http_get_module_ctx(r, ngx_http_cross_origin_module);
-    if (ctx == NULL) {
-        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_cross_origin_ctx_t));
-        if (ctx == NULL){
-            return NGX_ERROR;
-        }
-
-        ngx_http_set_ctx(r, ctx, ngx_http_cross_origin_module);
-    }
-
-    ctx->preflight = 1;
 
     /* At last, send this preflight response */
     return ngx_http_send_response(r, 200, &colcf->preflight_response_type, 
@@ -669,7 +674,6 @@ ngx_http_cross_origin_search_multi_header(ngx_http_request_t *r, ngx_str_t *name
             }
 
             *te = h[i];
-
         }
     }
 
