@@ -281,6 +281,18 @@ $parsed_req->{content}";
         }
     }
 
+    if (defined $block->response_headers_absent) {
+        my $headers = parse_headers($block->response_headers_absent);
+        while (my ($key, $val) = each %$headers) {
+            my $expected_val = $res->header($key);
+            if (!defined $expected_val) {
+                $expected_val = 'xxx';
+            }
+            is $expected_val, 'xxx',
+                "$name - header is absent";
+        }
+    }
+
     if (defined $block->response_body
            || defined $block->response_body_eval) {
         my $content = $res->content;
