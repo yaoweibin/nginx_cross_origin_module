@@ -46,12 +46,12 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 --- request
 OPTIONS /
 --- response_headers
-Access-Control-Allow-Origin: example.org
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 2: turn the module off
 --- http_config
@@ -70,17 +70,18 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 --- request
 OPTIONS /
---- response_body:
+--- response_headers_absent
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 3: test the cors_origin_list succ
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list unbounded;
 cors_header_list unbounded;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -93,18 +94,18 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 --- request
 OPTIONS /
 --- response_headers
-Access-Control-Allow-Origin: example.org
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 4: test the cors_origin_list fail
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example1.org bar.net;
+cors_origin_list http://www.foo.com http://example1.org http://bar.net;
 cors_method_list unbounded;
 cors_header_list unbounded;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -117,17 +118,18 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 --- request
 OPTIONS /
---- response_body:
+--- response_headers_absent
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 5: test the cors_method_list succ
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list unbounded;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -140,18 +142,18 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 --- request
 OPTIONS /
 --- response_headers
-Access-Control-Allow-Origin: example.org
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 6: test the cors_method_list fail 1 
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list unbounded;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -164,16 +166,17 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 --- request
 OPTIONS /
---- response_body:
+--- response_headers_absent
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 7: test the cors_method_list fail 2 
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET POST;
 cors_header_list unbounded;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -186,17 +189,18 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 --- request
 OPTIONS /
---- response_body:
+--- response_headers_absent
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 8: test the cors_header_list succ
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -209,19 +213,19 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Accept
 --- request
 OPTIONS /
 --- response_headers
-Access-Control-Allow-Origin: example.org
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 9: test the cors_header_list fail1
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -234,17 +238,18 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 --- request
 OPTIONS /
---- response_body:
+--- response_headers_absent
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 10: test the cors_header_list fail2
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Bccept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -257,18 +262,19 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Accept
 --- request
 OPTIONS /
---- response_body:
+--- response_headers_absent
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 11: test the cors_header_list not simple header
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept Bccept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -281,7 +287,7 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Bccept
 --- request
@@ -293,7 +299,7 @@ Access-Control-Allow-Headers: Accept, Bccept
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept Bccept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -306,7 +312,7 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Bccept
 --- request
@@ -318,7 +324,7 @@ Access-Control-Allow-Credentials: true
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept Bccept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -331,7 +337,7 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Bccept
 --- request
@@ -343,7 +349,7 @@ Access-Control-Max-Age: 3600
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept Bccept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -356,7 +362,7 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Bccept
 --- request
@@ -367,7 +373,7 @@ OPTIONS /
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept Bccept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -379,7 +385,7 @@ cors_support_credential on;
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Bccept
 --- request
@@ -390,7 +396,7 @@ OPTIONS /
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept Bccept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -404,7 +410,7 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Bccept
 --- request
@@ -416,7 +422,7 @@ Content-type: text/plain; charset=UTF-8
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept Bccept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -429,7 +435,7 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Bccept
 --- request

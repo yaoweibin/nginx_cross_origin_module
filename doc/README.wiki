@@ -62,7 +62,7 @@ Enable this module
 
 You can specify a list of origins consisting of zero or more origins that are allowed. The format is like this:
 
-cors_origin_list www.foo.com new.bar.net example.org;
+cors_origin_list http://www.foo.com http://new.bar.net http://example.org;
 
 == cors_method_list ==
 

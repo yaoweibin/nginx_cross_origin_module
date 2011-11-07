@@ -32,8 +32,8 @@ Synopsis
     }
 
 Description
-    This module can process the cross-origin resource sharing request with
-    this protocol (<http://www.w3.org/TR/cors/>) by Javescript. This module
+    This module can process the cross-origin resource sharing Javascript
+    request with this protocol (<http://www.w3.org/TR/cors/>). This module
     follows the protocol version of 20100727.
 
 Directives
@@ -56,7 +56,8 @@ Directives
     You can specify a list of origins consisting of zero or more origins
     that are allowed. The format is like this:
 
-    cors_origin_list www.foo.com new.bar.net example.org;
+    cors_origin_list http://www.foo.com http://new.bar.net
+    http://example.org;
 
   cors_method_list
     syntax: *cors_method_list unbounded|method_list;*

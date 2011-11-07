@@ -46,11 +46,11 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 --- request
 GET /
 --- response_headers
-Access-Control-Allow-Origin: example.org
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 2: turn the module off
 --- http_config
@@ -69,17 +69,17 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 --- request
 GET /
 --- response_headers_absent
-Access-Control-Allow-Origin: example.org
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 3: test the cors_origin_list succ
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list unbounded;
 cors_header_list unbounded;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -92,17 +92,17 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 --- request
 GET /
 --- response_headers
-Access-Control-Allow-Origin: example.org
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 4: test the cors_origin_list fail
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example1.org bar.net;
+cors_origin_list http://www.foo.com http://example1.org http://bar.net;
 cors_method_list unbounded;
 cors_header_list unbounded;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -115,17 +115,17 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 --- request
 GET /
 --- response_headers_absent
-Access-Control-Allow-Origin: example.org
+Access-Control-Allow-Origin: http://example.org
 
 === TEST 5: test with the cors_expose_header_list
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -138,7 +138,7 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 --- request
 GET /
 --- response_headers
@@ -148,7 +148,7 @@ Access-Control-Expose-Headers: AAAA, BBB, CCC
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept;
 cors_support_credential on;
@@ -160,7 +160,7 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 --- request
 GET /
@@ -171,7 +171,7 @@ Access-Control-Expose-Headers: AAAA, BBB, CCC
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept Bccept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -184,7 +184,7 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Bccept
 --- request
@@ -196,7 +196,7 @@ Access-Control-Allow-Credentials: true
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list www.foo.com example.org bar.net;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
 cors_header_list Accept Bccept;
 cors_expose_header_list AAAA Expires BBB CCC;
@@ -208,7 +208,7 @@ cors_preflight_response "Foo Bar!";
         proxy_pass http://blog.163.com;
     }
 --- more_headers
-Origin: example.org
+Origin: http://example.org
 Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Bccept
 --- request

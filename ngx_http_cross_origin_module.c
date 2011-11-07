@@ -23,12 +23,16 @@ typedef struct ngx_http_cross_origin_val_s {
     ngx_str_t                  value;
 } ngx_http_cross_origin_val_t;
 
+typedef struct {
+    ngx_flag_t  preflight;
+} ngx_http_cross_origin_ctx_t;
 
 typedef struct {
     ngx_array_t  *origin_list;
     ngx_array_t  *method_list;
     ngx_array_t  *header_list;
     ngx_array_t  *expose_header_list;
+    ngx_uint_t    safe_methods;
     ngx_flag_t    enable;
     ngx_flag_t    origin_unbounded;
     ngx_flag_t    method_unbounded;
@@ -71,6 +75,8 @@ static char *ngx_http_cors_method_list(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_cors_header_list(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_cors_safe_methods(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_cors_expose_header_list(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_cors_preflight_response(ngx_conf_t *cf, 
@@ -103,6 +109,13 @@ static ngx_command_t  ngx_http_cross_origin_commands[] = {
     { ngx_string("cors_header_list"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_cors_header_list,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL},
+
+    { ngx_string("cors_safe_methods"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      ngx_http_cors_safe_methods,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL},
@@ -265,6 +278,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     /* array of ngx_table_elt_t */
     ngx_array_t                      *headers, *allow_headers;   
     ngx_table_elt_t                  *h;
+    ngx_http_cross_origin_ctx_t      *ctx;
     ngx_http_cross_origin_loc_conf_t *colcf;
     
     allow_headers = NULL;
@@ -448,6 +462,18 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
             "http cross origin prefight ok, send the response.");
 
+    ctx = ngx_http_get_module_ctx(r, ngx_http_cross_origin_module);
+    if (ctx == NULL) {
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_cross_origin_ctx_t));
+        if (ctx == NULL){
+            return NGX_ERROR;
+        }
+
+        ngx_http_set_ctx(r, ctx, ngx_http_cross_origin_module);
+    }
+
+    ctx->preflight = 1;
+
     /* At last, send this preflight response */
     return ngx_http_send_response(r, 200, &colcf->preflight_response_type, 
             &colcf->preflight_response);
@@ -466,6 +492,7 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
     ngx_uint_t                         match, i;
     ngx_array_t                       *names;
     ngx_table_elt_t                   *h;
+    ngx_http_cross_origin_ctx_t       *ctx;
     ngx_http_cross_origin_loc_conf_t  *colcf;
 
     colcf = ngx_http_get_module_loc_conf(r, ngx_http_cross_origin_module);
@@ -474,8 +501,15 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
         goto next_filter;
     }
 
-    /* For testing, the preflight should be replied in the rewrite handler */
-    if (r->method & (NGX_HTTP_OPTIONS)) {
+    ctx = ngx_http_get_module_ctx(r, ngx_http_cross_origin_module);
+    if (ctx) {
+        if (ctx->preflight) {
+            goto next_filter;
+        }
+    }
+
+    /* 5.3 Security: ensure the requests using safe methods */
+    if ((r->method & colcf->safe_methods) == 0) {
         goto next_filter;
     }
 
@@ -866,78 +900,6 @@ ngx_http_cross_origin_split_string(ngx_http_request_t *r, ngx_str_t *str,
 }
 
 
-static void *
-ngx_http_cross_origin_create_conf(ngx_conf_t *cf)
-{
-    ngx_http_cross_origin_loc_conf_t  *conf;
-
-    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_cross_origin_loc_conf_t));
-    if (conf == NULL) {
-        return NULL;
-    }
-
-    /*
-     * set by ngx_pcalloc():
-     *
-     *     conf->origin_list  = NULL;
-     *     conf->method_list  = NULL;
-     *     conf->header_list  = NULL;
-     *     conf->expose_header_list  = NULL;
-     *     conf->preflight_response_type  = {0, NULL};
-     *     conf->preflight_response  = ALL NULL;
-     *
-     */
-
-    conf->enable             = NGX_CONF_UNSET;
-    conf->origin_unbounded   = NGX_CONF_UNSET;
-    conf->method_unbounded   = NGX_CONF_UNSET;
-    conf->header_unbounded   = NGX_CONF_UNSET;
-    conf->support_credential = NGX_CONF_UNSET;
-    conf->max_age            = NGX_CONF_UNSET;
-
-    return conf;
-}
-
-
-static char *
-ngx_http_cross_origin_merge_conf(ngx_conf_t *cf, void *parent, void *child)
-{
-    ngx_http_cross_origin_loc_conf_t *prev = parent;
-    ngx_http_cross_origin_loc_conf_t *conf = child;
-
-    if (conf->origin_list == NULL) {
-        conf->origin_list = prev->origin_list;
-    }
-
-    if (conf->method_list == NULL) {
-        conf->method_list = prev->method_list;
-    }
-
-    if (conf->header_list == NULL) {
-        conf->header_list = prev->header_list;
-    }
-
-    if (conf->expose_header_list == NULL) {
-        conf->expose_header_list = prev->expose_header_list;
-    }
-
-    if (conf->preflight_response.value.len == 0) {
-        conf->preflight_response = prev->preflight_response;
-    }
-
-    ngx_conf_merge_value(conf->enable, prev->enable, 0);
-    ngx_conf_merge_value(conf->origin_unbounded, prev->origin_unbounded, 0);
-    ngx_conf_merge_value(conf->method_unbounded, prev->method_unbounded, 0);
-    ngx_conf_merge_value(conf->header_unbounded, prev->header_unbounded, 0);
-    ngx_conf_merge_value(conf->support_credential, prev->support_credential, 0);
-    ngx_conf_merge_sec_value(conf->max_age, prev->max_age, 0);
-    ngx_conf_merge_str_value(conf->preflight_response_type, 
-            prev->preflight_response_type, DEFAULT_RESPONSE_CONTENT_TYPE);
-
-    return NGX_CONF_OK;
-}
-
-
 static ngx_int_t
 ngx_http_cross_origin_init(ngx_conf_t *cf)
 {
@@ -1078,6 +1040,30 @@ ngx_http_cors_header_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
+ngx_http_cors_safe_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_cross_origin_loc_conf_t   *colcf = conf;
+
+    ngx_str_t                          *value;
+    ngx_uint_t                          i, method;
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        method = ngx_http_cross_origin_get_method(&value[i]);
+        if (method == NGX_HTTP_UNKNOWN) {
+            return NGX_CONF_ERROR;
+        }
+
+        colcf->safe_methods |= method;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
 ngx_http_cors_expose_header_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_cross_origin_loc_conf_t  *colcf = conf;
@@ -1143,3 +1129,85 @@ ngx_http_cors_preflight_response(ngx_conf_t *cf, ngx_command_t *cmd,
 
     return NGX_CONF_OK;
 }
+
+
+static void *
+ngx_http_cross_origin_create_conf(ngx_conf_t *cf)
+{
+    ngx_http_cross_origin_loc_conf_t  *conf;
+
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_cross_origin_loc_conf_t));
+    if (conf == NULL) {
+        return NULL;
+    }
+
+    /*
+     * set by ngx_pcalloc():
+     *
+     *     conf->origin_list  = NULL;
+     *     conf->method_list  = NULL;
+     *     conf->header_list  = NULL;
+     *     conf->safe_methods = 0;
+     *     conf->expose_header_list  = NULL;
+     *     conf->preflight_response_type  = {0, NULL};
+     *     conf->preflight_response  = ALL NULL;
+     *
+     */
+
+    conf->enable             = NGX_CONF_UNSET;
+    conf->origin_unbounded   = NGX_CONF_UNSET;
+    conf->method_unbounded   = NGX_CONF_UNSET;
+    conf->header_unbounded   = NGX_CONF_UNSET;
+    conf->support_credential = NGX_CONF_UNSET;
+    conf->max_age            = NGX_CONF_UNSET;
+
+    return conf;
+}
+
+
+static char *
+ngx_http_cross_origin_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+{
+    ngx_http_cross_origin_loc_conf_t *prev = parent;
+    ngx_http_cross_origin_loc_conf_t *conf = child;
+
+    if (conf->origin_list == NULL) {
+        conf->origin_list = prev->origin_list;
+    }
+
+    if (conf->method_list == NULL) {
+        conf->method_list = prev->method_list;
+    }
+
+    if (conf->header_list == NULL) {
+        conf->header_list = prev->header_list;
+    }
+
+    if (conf->safe_methods == 0) {
+        conf->safe_methods = prev->safe_methods;
+        if (conf->safe_methods == 0) {
+            conf->safe_methods = NGX_HTTP_GET | NGX_HTTP_OPTIONS;
+        }
+    }
+
+    if (conf->expose_header_list == NULL) {
+        conf->expose_header_list = prev->expose_header_list;
+    }
+
+    if (conf->preflight_response.value.len == 0) {
+        conf->preflight_response = prev->preflight_response;
+    }
+
+    ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_value(conf->origin_unbounded, prev->origin_unbounded, 0);
+    ngx_conf_merge_value(conf->method_unbounded, prev->method_unbounded, 0);
+    ngx_conf_merge_value(conf->header_unbounded, prev->header_unbounded, 0);
+    ngx_conf_merge_value(conf->support_credential, prev->support_credential, 0);
+    ngx_conf_merge_sec_value(conf->max_age, prev->max_age, 0);
+    ngx_conf_merge_str_value(conf->preflight_response_type, 
+            prev->preflight_response_type, DEFAULT_RESPONSE_CONTENT_TYPE);
+
+    return NGX_CONF_OK;
+}
+
+
