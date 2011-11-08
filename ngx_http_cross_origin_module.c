@@ -14,8 +14,10 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+
 #define SPACE ' '
 #define COMMA ','
+
 
 typedef struct {
     u_char    *name;
@@ -50,14 +52,14 @@ typedef struct {
 
 
 static ngx_int_t ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r);
-static ngx_table_elt_t *ngx_http_cross_origin_search_header(
-        ngx_http_request_t *r, ngx_str_t *name);
-static ngx_array_t *ngx_http_cross_origin_search_multi_header(
+static ngx_table_elt_t * ngx_http_cross_origin_search_header(
+        ngx_list_t *list, ngx_str_t *name);
+static ngx_array_t *ngx_http_cross_origin_search_multi_request_header(
         ngx_http_request_t *r, ngx_str_t *name);
 static ngx_int_t ngx_http_cross_origin_search_list(ngx_array_t *arr, 
         ngx_str_t *name, ngx_flag_t case_insensitive);
 static ngx_uint_t ngx_http_cross_origin_get_method(ngx_str_t *method);
-static ngx_int_t ngx_http_cross_origin_add_header(ngx_http_request_t *r, 
+static ngx_int_t ngx_http_cross_origin_add_header(ngx_list_t *list, 
         ngx_str_t *key, ngx_str_t *value);
 static ngx_int_t ngx_http_cross_origin_search_string(ngx_str_t *string_array, 
         ngx_str_t *name, ngx_flag_t case_insensitive);
@@ -211,6 +213,7 @@ static ngx_str_t response_credential_true = ngx_string("true");
 
 #define DEFAULT_RESPONSE_CONTENT_TYPE "text/plain"
 
+
 /* case-sensitive */
 static ngx_str_t simple_methods[] = {
     ngx_string("GET"),
@@ -279,10 +282,8 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     ngx_str_t                        *method_name;
     ngx_str_t                        *fnames, *str_tmp;
     ngx_uint_t                        method, match, not_simple, i;
-    /* array of ngx_table_elt_t */
-    ngx_array_t                      *headers;
-    /* array of ngx_str_t */
-    ngx_array_t                      *field_names;   
+    ngx_array_t                      *headers;     /* array of ngx_table_elt_t */
+    ngx_array_t                      *field_names; /* array of ngx_str_t */
     ngx_table_elt_t                  *h;
     ngx_http_cross_origin_ctx_t      *ctx;
     ngx_http_cross_origin_loc_conf_t *colcf;
@@ -301,7 +302,8 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
                    "http cross origin rewrite handler \"%V\"", &r->uri);
 
     /* Step 1 */
-    h = ngx_http_cross_origin_search_header(r, &request_origin_header);
+    h = ngx_http_cross_origin_search_header(&r->headers_in.headers, 
+            &request_origin_header);
     if (h == NULL) {
         goto leave;
     }
@@ -335,7 +337,8 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
 
     /* Step 3 */
     /* Is this necesssary? */
-    h = ngx_http_cross_origin_search_header(r, &request_method_header);
+    h = ngx_http_cross_origin_search_header(&r->headers_in.headers, 
+            &request_method_header);
     if (h == NULL) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                 "http cross origin not include the request method header");
@@ -352,7 +355,8 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     
     /* Step 4 */
     field_names = NULL;
-    headers = ngx_http_cross_origin_search_multi_header(r, &request_headers_header);
+    headers = ngx_http_cross_origin_search_multi_request_header(r,
+            &request_headers_header);
     if (headers != NULL) {
         field_names = ngx_array_create(r->pool, 4, sizeof(ngx_str_t));
         if (field_names == NULL) {
@@ -401,18 +405,21 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     /* Step 7 */
     if (colcf->support_credential) {
 
-        if (ngx_http_cross_origin_add_header(r, &response_origin_header, origin_name)
+        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
+                    &response_origin_header, origin_name)
                 == NGX_ERROR) {
             return NGX_ERROR;
         }
 
-        if (ngx_http_cross_origin_add_header(r, &response_credential_header, 
-                    &response_credential_true) == NGX_ERROR) {
+        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
+                    &response_credential_header, &response_credential_true) 
+                == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
     else {
-        if (ngx_http_cross_origin_add_header(r, &response_origin_header, origin_name)
+        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
+                    &response_origin_header, origin_name)
                 == NGX_ERROR) {
             return NGX_ERROR;
         }
@@ -428,8 +435,8 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
         last = ngx_snprintf(str_max_age.data, 64, "%T", colcf->max_age);
         str_max_age.len = last - str_max_age.data;
 
-        if (ngx_http_cross_origin_add_header(r, &response_max_age_header, 
-                    &str_max_age) == NGX_ERROR) {
+        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
+                    &response_max_age_header, &str_max_age) == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
@@ -437,7 +444,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     /* Step 9 */
     if (!ngx_http_cross_origin_search_string(simple_methods, method_name, 0)) {
         if (colcf->method_unbounded) {
-            if (ngx_http_cross_origin_add_header(r, 
+            if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
                         &response_method_header, method_name) == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -447,7 +454,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
             str_tmp = ngx_http_cross_origin_concatenate_list_value(r, 
                     colcf->method_list);
 
-            if (str_tmp && ngx_http_cross_origin_add_header(r, 
+            if (str_tmp && ngx_http_cross_origin_add_header(&r->headers_out.headers, 
                         &response_method_header, str_tmp) == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -471,7 +478,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
             if (headers) {
                 h = headers->elts;
                 for (i = 0; i < headers->nelts; i++) {
-                    if (ngx_http_cross_origin_add_header(r, 
+                    if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
                                 &response_headers_header, &h[i].value) == NGX_ERROR) {
                         return NGX_ERROR;
                     }
@@ -482,7 +489,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
             str_tmp = ngx_http_cross_origin_concatenate_list_value(r, 
                     colcf->header_list);
 
-            if (str_tmp && ngx_http_cross_origin_add_header(r, 
+            if (str_tmp && ngx_http_cross_origin_add_header(&r->headers_out.headers, 
                         &response_headers_header, str_tmp) == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -526,6 +533,13 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
         }
     }
 
+    h = ngx_http_cross_origin_search_header(&r->headers_out.headers, 
+            &response_origin_header);
+    if (h) {
+        /* Already processed by upstream server */
+        goto next_filter;
+    }
+
     /* 5.3 Security: ensure the requests using safe methods */
     if ((r->method & colcf->safe_methods) == 0) {
         goto next_filter;
@@ -535,7 +549,8 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
             "http cross origin filter");
 
     /* Step 1 */
-    h = ngx_http_cross_origin_search_header(r, &request_origin_header);
+    h = ngx_http_cross_origin_search_header(&r->headers_in.headers,
+            &request_origin_header);
     if (h == NULL) {
         goto next_filter;
     }
@@ -582,19 +597,20 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
     /* Step 3 */
     if (colcf->support_credential) {
 
-        if (ngx_http_cross_origin_add_header(r, &response_origin_header, origin_name)
-                == NGX_ERROR) {
+        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
+                    &response_origin_header, origin_name) == NGX_ERROR) {
             return NGX_ERROR;
         }
 
-        if (ngx_http_cross_origin_add_header(r, &response_credential_header, 
+        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
+                    &response_credential_header, 
                     &response_credential_true) == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
     else {
-        if (ngx_http_cross_origin_add_header(r, &response_origin_header, origin_name)
-                == NGX_ERROR) {
+        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
+                    &response_origin_header, origin_name) == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
@@ -606,7 +622,7 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
         str_tmp = ngx_http_cross_origin_concatenate_list_value(r, 
                 colcf->expose_header_list);
 
-        if (str_tmp && ngx_http_cross_origin_add_header(r, 
+        if (str_tmp && ngx_http_cross_origin_add_header(&r->headers_out.headers, 
                     &response_expose_headers_header, str_tmp) == NGX_ERROR) {
             return NGX_ERROR;
         }
@@ -621,13 +637,13 @@ next_filter:
 
 
 static ngx_table_elt_t *
-ngx_http_cross_origin_search_header(ngx_http_request_t *r, ngx_str_t *name)
+ngx_http_cross_origin_search_header(ngx_list_t *list, ngx_str_t *name)
 {
     ngx_uint_t                   i;
     ngx_table_elt_t             *h;
     ngx_list_part_t             *part;
 
-    part = &r->headers_in.headers.part;
+    part = &list->part;
     h = part->elts;
 
     for (i = 0; /* void */; i++) {
@@ -654,7 +670,8 @@ ngx_http_cross_origin_search_header(ngx_http_request_t *r, ngx_str_t *name)
 
 
 static ngx_array_t *
-ngx_http_cross_origin_search_multi_header(ngx_http_request_t *r, ngx_str_t *name)
+ngx_http_cross_origin_search_multi_request_header(ngx_http_request_t *r, 
+        ngx_str_t *name)
 {
     ngx_uint_t                   i;
     ngx_array_t                 *arr;
@@ -770,13 +787,13 @@ ngx_http_cross_origin_get_method(ngx_str_t *method)
 
 
 static ngx_int_t
-ngx_http_cross_origin_add_header(ngx_http_request_t *r, ngx_str_t *key,
+ngx_http_cross_origin_add_header(ngx_list_t *list, ngx_str_t *key,
     ngx_str_t *value)
 {
     ngx_table_elt_t  *h;
 
     if (value->len) {
-        h = ngx_list_push(&r->headers_out.headers);
+        h = ngx_list_push(list);
         if (h == NULL) {
             return NGX_ERROR;
         }

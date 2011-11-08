@@ -487,13 +487,11 @@ cors_preflight_response "Foo Bar!";
 --- more_headers
 Origin: http://example.org
 Access-Control-Request-Method: PUT
-Access-Control-Request-Headers: Accept, Good
-Access-Control-Request-Headers: Bad, foo, nice
+Access-Control-Request-Headers: Authorization,Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, access-control-allow-credentials,access-control-allow-methods,access-control-allow-origin,access-control-max-age, Bad, foo, nice
 --- request
 OPTIONS /
 --- response_headers
-Access-Control-Allow-Headers: Accept, Good
-Access-Control-Allow-Headers: Bad, foo, nice
+Access-Control-Allow-Headers: Authorization,Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, access-control-allow-credentials,access-control-allow-methods,access-control-allow-origin,access-control-max-age, Bad, foo, nice
 
 === TEST 19: test the cors_header_list match the header
 --- http_config
@@ -514,7 +512,7 @@ cors_preflight_response "Foo Bar!";
 --- more_headers
 Origin: http://example.org
 Access-Control-Request-Method: PUT
-Access-Control-Request-Headers: Bad, foo, nice
+Access-Control-Request-Headers: Authorization,Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, access-control-allow-credentials,access-control-allow-methods,access-control-allow-origin,access-control-max-age, Bad, foo, nice
 --- request
 OPTIONS /
 --- response_headers
