@@ -216,7 +216,7 @@ GET /
 --- response_headers_absent
 Access-Control-Allow-Credentials: true
 
-=== TEST 9: test the core_safe_methods
+=== TEST 9: test the core_safe_methods absent
 --- http_config
 cors on;
 cors_max_age     3600;

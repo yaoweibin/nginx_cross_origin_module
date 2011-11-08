@@ -202,7 +202,7 @@ cors on;
 cors_max_age     3600;
 cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
-cors_header_list Accept;
+cors_header_list Accept Bccept Bad;
 cors_expose_header_list AAAA Expires BBB CCC;
 cors_support_credential on;
 cors_preflight_response "Foo Bar!";
@@ -215,19 +215,19 @@ cors_preflight_response "Foo Bar!";
 --- more_headers
 Origin: http://example.org
 Access-Control-Request-Method: PUT
-Access-Control-Request-Headers: Accept
+Access-Control-Request-Headers: Bccept, Bad
 --- request
 OPTIONS /
 --- response_headers
-Access-Control-Allow-Origin: http://example.org
+Access-Control-Allow-Headers: Accept, Bccept, Bad
 
-=== TEST 9: test the cors_header_list fail1
+=== TEST 9: test the cors_header_list without the Rquest-Headers 
 --- http_config
 cors on;
 cors_max_age     3600;
 cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
-cors_header_list Accept;
+cors_header_list Accept Bccept Bad;
 cors_expose_header_list AAAA Expires BBB CCC;
 cors_support_credential on;
 cors_preflight_response "Foo Bar!";
@@ -245,13 +245,13 @@ OPTIONS /
 --- response_headers_absent
 Access-Control-Allow-Origin: http://example.org
 
-=== TEST 10: test the cors_header_list fail2
+=== TEST 10: test the cors_header_list mismatch with the list of headers  
 --- http_config
 cors on;
 cors_max_age     3600;
 cors_origin_list http://www.foo.com http://example.org http://bar.net;
 cors_method_list GET PUT POST;
-cors_header_list Bccept;
+cors_header_list Bccept Foo Bar;
 cors_expose_header_list AAAA Expires BBB CCC;
 cors_support_credential on;
 cors_preflight_response "Foo Bar!";
@@ -264,7 +264,7 @@ cors_preflight_response "Foo Bar!";
 --- more_headers
 Origin: http://example.org
 Access-Control-Request-Method: PUT
-Access-Control-Request-Headers: Accept
+Access-Control-Request-Headers: Accept, Good
 --- request
 OPTIONS /
 --- response_headers_absent
@@ -442,3 +442,81 @@ Access-Control-Request-Headers: Bccept
 OPTIONS /
 --- response_headers
 Content-type: text/plain
+
+=== TEST 17: test the cors_header_list match the header
+--- http_config
+cors on;
+cors_max_age     3600;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
+cors_method_list GET PUT POST;
+cors_header_list Bccept Foo Bar;
+cors_expose_header_list AAAA Expires BBB CCC;
+cors_support_credential on;
+cors_preflight_response "Foo Bar!";
+
+--- config
+    location / {
+        proxy_set_header Host blog.163.com;
+        proxy_pass http://blog.163.com;
+    }
+--- more_headers
+Origin: http://example.org
+Access-Control-Request-Method: PUT
+Access-Control-Request-Headers: Accept, Good, foo
+--- request
+OPTIONS /
+--- response_headers
+Access-Control-Allow-Headers: Bccept, Foo, Bar
+
+=== TEST 18: test the cors_header_list unbounded
+--- http_config
+cors on;
+cors_max_age     3600;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
+cors_method_list GET PUT POST;
+cors_header_list unbounded;
+cors_expose_header_list AAAA Expires BBB CCC;
+cors_support_credential on;
+cors_preflight_response "Foo Bar!";
+
+--- config
+    location / {
+        proxy_set_header Host blog.163.com;
+        proxy_pass http://blog.163.com;
+    }
+--- more_headers
+Origin: http://example.org
+Access-Control-Request-Method: PUT
+Access-Control-Request-Headers: Accept, Good
+Access-Control-Request-Headers: Bad, foo, nice
+--- request
+OPTIONS /
+--- response_headers
+Access-Control-Allow-Headers: Accept, Good
+Access-Control-Allow-Headers: Bad, foo, nice
+
+=== TEST 19: test the cors_header_list match the header
+--- http_config
+cors on;
+cors_max_age     3600;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
+cors_method_list GET PUT POST;
+cors_header_list Bccept Foo Bar;
+cors_expose_header_list AAAA Expires BBB CCC;
+cors_support_credential on;
+cors_preflight_response "Foo Bar!";
+
+--- config
+    location / {
+        proxy_set_header Host blog.163.com;
+        proxy_pass http://blog.163.com;
+    }
+--- more_headers
+Origin: http://example.org
+Access-Control-Request-Method: PUT
+Access-Control-Request-Headers: Bad, foo, nice
+--- request
+OPTIONS /
+--- response_headers
+Access-Control-Allow-Headers: Bccept, Foo, Bar
+
