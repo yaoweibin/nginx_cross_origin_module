@@ -92,7 +92,7 @@ Directives
 
     With the Security consideration in section 5.3 of this protocol, only
     GET and OPTIONS methods are allowed by default. It's for the actual
-    request. It keeps your site safe when you allow unbounded method. .
+    request. It keeps your site safe when you allow unbounded method.
     Generally, you can specify the same methods as the cors_method_list.
 
   cors_expose_header_list
@@ -102,8 +102,7 @@ Directives
 
     context: *http, server, location*
 
-    You can specify a list of headers the resource wants to expose the API
-    of the CORS API.
+    You can specify a list of headers are safe to expose to the CORS API.
 
   cors_max_age
     syntax: *cors_max_age time;*
