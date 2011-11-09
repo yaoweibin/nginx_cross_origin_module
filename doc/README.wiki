@@ -73,7 +73,7 @@ cors_origin_list http://www.foo.com http://new.bar.net http://example.org;
 
 '''context:''' ''http, server, location''
 
-You can specify a list of methods consisting of zero or more methods that are supported by the resource. The format is like this:
+You can specify a list of methods consisting of zero or more methods that are supported by the resource. It's for the preflight request. The format is like this:
 
 cors_method_list GET POST PUT;
 
@@ -95,7 +95,7 @@ You can specify a list of headers consisting of zero or more field names that ar
 
 '''context:''' ''http, server, location''
 
-With the Security consideration in section 5.3 of this protocol, only GET and OPTIONS actual request are allowed by default. You can add new methods with this directive. 
+With the Security consideration in section 5.3 of this protocol, only GET and OPTIONS methods are allowed by default. It's for the actual request. It keeps your site safe when you allow unbounded method. . Generally, you can specify the same methods as the cors_method_list. 
 
 == cors_expose_header_list ==
 

@@ -68,7 +68,8 @@ Directives
     context: *http, server, location*
 
     You can specify a list of methods consisting of zero or more methods
-    that are supported by the resource. The format is like this:
+    that are supported by the resource. It's for the preflight request. The
+    format is like this:
 
     cors_method_list GET POST PUT;
 
@@ -90,8 +91,9 @@ Directives
     context: *http, server, location*
 
     With the Security consideration in section 5.3 of this protocol, only
-    GET and OPTIONS actual request are allowed by default. You can add new
-    methods with this directive.
+    GET and OPTIONS methods are allowed by default. It's for the actual
+    request. It keeps your site safe when you allow unbounded method. .
+    Generally, you can specify the same methods as the cors_method_list.
 
   cors_expose_header_list
     syntax: *cors_expose_header_list header_list;*
