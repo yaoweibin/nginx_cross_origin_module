@@ -54,7 +54,8 @@ Directives
     context: *http, server, location*
 
     You can specify a list of origins consisting of zero or more origins
-    that are allowed. The format is like this:
+    that are allowed. *unbounded* means any cross origin is allowed. The
+    format is like this:
 
     cors_origin_list http://www.foo.com http://new.bar.net
     http://example.org;
@@ -67,7 +68,8 @@ Directives
     context: *http, server, location*
 
     You can specify a list of methods consisting of zero or more methods
-    that are supported by the resource. The format is like this:
+    that are supported by the resource. *unbounded* means any cross origin
+    request method is allowed. The format is like this:
 
     cors_method_list GET POST PUT;
 
@@ -79,7 +81,8 @@ Directives
     context: *http, server, location*
 
     You can specify a list of headers consisting of zero or more field names
-    that are supported by the resource.
+    that are supported by the resource. *unbounded* means any cross origin
+    request header is allowed.
 
   cors_expose_header_list
     syntax: *cors_expose_header_list header_list;*
@@ -88,7 +91,8 @@ Directives
 
     context: *http, server, location*
 
-    You can specify a list of headers are safe to expose to the CORS API.
+    You can specify a list of headers are safe to expose to the API of a
+    CORS API specification.
 
   cors_max_age
     syntax: *cors_max_age time;*
