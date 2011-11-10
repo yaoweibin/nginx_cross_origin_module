@@ -216,7 +216,32 @@ GET /
 --- response_headers_absent
 Access-Control-Allow-Credentials: true
 
-=== TEST 9: test the core_safe_methods absent
+=== TEST 9: test the request method absent
+--- http_config
+cors on;
+cors_max_age     3600;
+cors_origin_list http://www.foo.com http://example.org http://bar.net;
+cors_method_list GET PUT;
+cors_header_list Accept Bccept;
+cors_expose_header_list AAAA Expires BBB CCC;
+cors_support_credential on;
+cors_preflight_response "Foo Bar!";
+
+--- config
+    location / {
+        proxy_set_header Host blog.163.com;
+        proxy_pass http://blog.163.com;
+    }
+--- more_headers
+Origin: http://example.org
+Access-Control-Request-Method: PUT
+Access-Control-Request-Headers: Bccept
+--- request
+POST /
+--- response_headers_absent
+Access-Control-Allow-Credentials: true
+
+=== TEST 10: test the contain method
 --- http_config
 cors on;
 cors_max_age     3600;
@@ -238,17 +263,16 @@ Access-Control-Request-Method: PUT
 Access-Control-Request-Headers: Bccept
 --- request
 POST /
---- response_headers_absent
+--- response_headers
 Access-Control-Allow-Credentials: true
 
-=== TEST 10: test the core_safe_methods
+=== TEST 11: test the core_method_list unbounded
 --- http_config
 cors on;
 cors_max_age     3600;
 cors_origin_list http://www.foo.com http://example.org http://bar.net;
-cors_method_list GET PUT POST;
+cors_method_list unbounded;
 cors_header_list Accept Bccept;
-cors_safe_methods GET PUT POST;
 cors_expose_header_list AAAA Expires BBB CCC;
 cors_support_credential on;
 cors_preflight_response "Foo Bar!";

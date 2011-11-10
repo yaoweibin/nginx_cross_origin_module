@@ -17,9 +17,8 @@ Synopsis
         cors on;
         cors_max_age     3600;
         cors_origin_list unbounded;
-        cors_method_list unbounded;
+        cors_method_list GET HEAD PUT POST;
         cors_header_list unbounded;
-        cors_safe_methods GET OPTIONS;
 
         server {
             listen       80;
@@ -68,8 +67,7 @@ Directives
     context: *http, server, location*
 
     You can specify a list of methods consisting of zero or more methods
-    that are supported by the resource. It's for the preflight request. The
-    format is like this:
+    that are supported by the resource. The format is like this:
 
     cors_method_list GET POST PUT;
 
@@ -82,18 +80,6 @@ Directives
 
     You can specify a list of headers consisting of zero or more field names
     that are supported by the resource.
-
-  cors_safe_methods
-    syntax: *cors_safe_methods methods;*
-
-    default: *cors_safe_methods GET OPTIONS*
-
-    context: *http, server, location*
-
-    With the Security consideration in section 5.3 of this protocol, only
-    GET and OPTIONS methods are allowed by default. It's for the actual
-    request. It keeps your site safe when you allow unbounded method.
-    Generally, you can specify the same methods as the cors_method_list.
 
   cors_expose_header_list
     syntax: *cors_expose_header_list header_list;*

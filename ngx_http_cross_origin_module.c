@@ -541,8 +541,10 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
     }
 
     /* 5.3 Security: ensure the requests using safe methods */
-    if ((r->method & colcf->safe_methods) == 0) {
-        goto next_filter;
+    if (!colcf->method_unbounded) {
+        if ((r->method & colcf->safe_methods) == 0) {
+            goto next_filter;
+        }
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1007,7 +1009,7 @@ ngx_http_cors_method_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_cross_origin_loc_conf_t  *colcf = conf;
 
     ngx_str_t                         *value;
-    ngx_uint_t                         i;
+    ngx_uint_t                         i, method;
     ngx_http_cross_origin_val_t       *cov;
 
     value = cf->args->elts;
@@ -1031,6 +1033,13 @@ ngx_http_cors_method_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (cov == NULL) {
             return NGX_CONF_ERROR;
         }
+
+        method = ngx_http_cross_origin_get_method(&value[i]);
+        if (method == NGX_HTTP_UNKNOWN) {
+            return NGX_CONF_ERROR;
+        }
+
+        colcf->safe_methods |= method;
 
         cov->hash = ngx_hash_key(value[i].data, value[i].len);
         cov->value = value[i];
